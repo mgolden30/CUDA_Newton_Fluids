@@ -1,0 +1,10 @@
+#ifndef MY_COMMON
+#define MY_COMMON 
+
+/* This header contains definitions that are useful for all source code.
+ * Assume this is included in any .cu file
+ */
+
+
+
+#endif
