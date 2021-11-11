@@ -15,17 +15,13 @@ max_iterations = fread(fileID, my_size, precision, skip);
 
 
 %Now with this info, read the rest of the state
-my_size = (3+4)*N*N;
+my_size = (9)*N*N;
 precision = 'double';
 skip = 0;
-data = fread(fileID, my_size, precision, skip);
+state = fread(fileID, my_size, precision, skip);
+F     = fread(fileID, my_size, precision, skip);
 
-state = data(1:3*N*N);
-F = data(3*N*N + (1:4*N*N));
-
-
-
-[state, F] = rescale_state(state, F, N);
+%[state, F] = rescale_state(state, F, N);
 
 
 
@@ -35,14 +31,11 @@ skip = 0;
 gmres_res = fread(fileID, my_size, precision, skip);
 normstate = fread(fileID, my_size, precision, skip);
 normF     = fread(fileID, my_size, precision, skip);
-normJtF   = fread(fileID, my_size, precision, skip);
+%normJtF   = fread(fileID, my_size, precision, skip);
 fclose(fileID);
 
 
-
-
-
-
+figure(1)
 tiledlayout(2,3);
 
 nexttile
@@ -50,17 +43,17 @@ nexttile
 loglog( 1:max_iterations, normF, 'o' );
 hold on
 loglog( 1:max_iterations, normstate, 'o' );
-loglog( 1:max_iterations, normJtF, 'o' );
+%loglog( 1:max_iterations, normJtF, 'o' );
 loglog( 1:max_iterations, gmres_res, 'o' );
 loglog( 1:max_iterations, normF./normstate, 'o' );
 hold off
 title("Newton-GMRES error")
-legend({"|F|", "|state|", "|J'*F|", "GMRES residual", "|F|/|state|"}, ...
+legend({"|F|", "|state|", "GMRES residual", "|F|/|state|"}, ...
     'Location', 'southwest' )
 ylabel("magnitude");
 xlabel("iteration");
 pause(1e-1);
-
+ylim([1e-4, 1e2 ]);
 
 
 nexttile
@@ -133,43 +126,8 @@ adjust_caxis( fft_w )
 
 norm(F)/norm(state)
 
-plot_residual(F, N);
-
-function plot_residual(F, N);
-  figure(2);
-  
-  tiledlayout(2,2);
-  
-  nexttile;
-  div1 = reshape( F( 0*N*N + (1:N*N) ), [N,N] );
-  imagesc(div1);
-  pbaspect([1 1 1]);
-  colorbar();
-  title('Div1')
-  
-  nexttile;
-  div1 = reshape( F( 1*N*N + (1:N*N) ), [N,N] );
-  imagesc(div1);
-  pbaspect([1 1 1]);
-  colorbar();
-  title('Div2')
-  
-  nexttile;
-  div1 = reshape( F( 2*N*N + (1:N*N) ), [N,N] );
-  imagesc(div1);
-  pbaspect([1 1 1]);
-  colorbar();
-  title('vorticity')
-  
-  nexttile;
-  div1 = reshape( F( 3*N*N + (1:N*N) ), [N,N] );
-  imagesc(div1);
-  pbaspect([1 1 1]);
-  colorbar();
-  title('equil')
-  
-end
-
+check_fft(state, N);
+check_residual( F, N );
 function [state2, F2] = rescale_state(state, F, N)
   u = state( 0*N*N + (1:N*N) );
   v = state( 1*N*N + (1:N*N) );
@@ -186,7 +144,45 @@ function [state2, F2] = rescale_state(state, F, N)
 end
 
 function adjust_caxis( data )
-  data = real(log10(abs(data)));
-  good = data > -7;
-  caxis( [ min(data(good)) max(data(good)) ] );
+  log_data = log(abs(data));
+  good = log_data > -10;
+  caxis( [ 1.5*min(log_data(good)) max(log_data(good))] );
+end
+
+function check_residual( state, N )
+  figure(3);
+  
+  tiledlayout(3,3);
+  
+  for i=1:9
+    nexttile
+    u = reshape( state( (i-1)*N*N + (1:N*N) ), [N,N] );       
+    imagesc( u );
+    title( sprintf('residual %d', i) );
+    pbaspect([1 1 1]);
+    colorbar();
+    
+    pause(1e-1)
+  end
+end
+
+
+function check_fft( state, N )
+  figure(2);
+  
+  tiledlayout(3,3);
+  
+  for i=1:9
+    nexttile
+    u = reshape( state( (i-1)*N*N + (1:N*N) ), [N,N] ); 
+      
+    fft_w = fftshift( fft2(u) );
+    imagesc( log10(abs(fft_w)) );
+    title( sprintf('Fourier Spectra of field number %d', i) );
+    pbaspect([1 1 1]);
+    colorbar();
+    adjust_caxis( fft_w );
+    
+    pause(1e-1)
+  end
 end
